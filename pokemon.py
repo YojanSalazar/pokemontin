@@ -212,3 +212,183 @@ class Entrenador:
                     print(f"{Fore.RED}❌ Opción inválida. Intenta de nuevo.{Style.RESET_ALL}")
             except ValueError:
                 print(f"{Fore.RED}❌ Por favor ingresa un número.{Style.RESET_ALL}")
+
+
+class Batalla:
+
+    def _init_(self, jugador, rival):
+        self.__jugador = jugador
+        self.__rival = rival
+        self.__turno = 1
+    
+    def iniciar(self):
+        self.__mostrar_introduccion()
+        
+        while not self.__hay_ganador():
+            self.__ejecutar_turno()
+            self.__turno += 1
+        
+        self.__mostrar_resultado()
+    
+    def __mostrar_introduccion(self):
+        limpiar_consola()
+        print(f"{Fore.MAGENTA}{'='*50}")
+        print(f"{'🎮 ¡COMIENZA LA BATALLA POKÉMON! 🎮'.center(50)}")
+        print(f"{'='*50}{Style.RESET_ALL}\n")
+        
+        print(f"{Fore.CYAN}⚔️  {self._jugador.get_nombre()} envía a {self._jugador.get_pokemon().get_nombre()}!")
+        print(f"⚔️  {self._rival.get_nombre()} envía a {self._rival.get_pokemon().get_nombre()}!{Style.RESET_ALL}\n")
+        
+        input(f"{Fore.YELLOW}Presiona ENTER para comenzar...{Style.RESET_ALL}")
+    
+    def __ejecutar_turno(self):
+        limpiar_consola()
+        print(f"{Fore.MAGENTA}═══════════════ TURNO {self.__turno} ═══════════════{Style.RESET_ALL}\n")
+        print(f"{Fore.CYAN}TU POKÉMON:{Style.RESET_ALL}")
+        self.__jugador.get_pokemon().mostrar_estado()
+        print(f"\n{Fore.RED}POKÉMON RIVAL:{Style.RESET_ALL}")
+        self.__rival.get_pokemon().mostrar_estado()
+        print()
+        
+        ataque_jugador = self.__jugador.elegir_ataque()
+        self._jugador.get_pokemon().atacar(ataque_jugador, self._rival.get_pokemon())
+        
+        if self.__rival.get_pokemon().esta_debilitado():
+            return
+        
+        input(f"\n{Fore.YELLOW}Presiona ENTER para continuar...{Style.RESET_ALL}")
+        print(f"\n{Fore.RED}--- Turno del rival ---{Style.RESET_ALL}")
+        time.sleep(1)
+        
+        ataque_rival = self.__rival.elegir_ataque()
+        self._rival.get_pokemon().atacar(ataque_rival, self._jugador.get_pokemon())
+        
+        input(f"\n{Fore.YELLOW}Presiona ENTER para el siguiente turno...{Style.RESET_ALL}")
+    
+    def __hay_ganador(self):
+        return (self.__jugador.get_pokemon().esta_debilitado() or 
+                self.__rival.get_pokemon().esta_debilitado())
+    
+    def __mostrar_resultado(self):
+        limpiar_consola()
+        
+        if self.__jugador.get_pokemon().esta_debilitado():
+            print(f"{Fore.RED}{'='*50}")
+            print(f"{'💔 HAS PERDIDO LA BATALLA 💔'.center(50)}")
+            print(f"{'='*50}{Style.RESET_ALL}\n")
+            print(f"{self.__jugador.get_pokemon().get_nombre()} se ha debilitado...")
+            print(f"¡{self.__rival.get_nombre()} es el ganador!")
+        else:
+            print(f"{Fore.GREEN}{'='*50}")
+            print(f"{'🏆 ¡HAS GANADO LA BATALLA! 🏆'.center(50)}")
+            print(f"{'='*50}{Style.RESET_ALL}\n")
+            print(f"{self.__rival.get_pokemon().get_nombre()} se ha debilitado...")
+            print(f"¡{self.__jugador.get_nombre()}, eres el ganador!")
+
+
+
+def limpiar_consola():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def mostrar_titulo():
+    limpiar_consola()
+    print(f"{Fore.YELLOW}{Style.BRIGHT}")
+    print("  ╔═══════════════════════════════════════════════╗")
+    print("  ║                                               ║")
+    print("  ║        ⚡ BATALLA POKÉMON ⚡                  ║")
+    print("  ║        Edición Consola - POO                  ║")
+    print("  ║                                               ║")
+    print("  ╚═══════════════════════════════════════════════╝")
+    print(f"{Style.RESET_ALL}\n")
+
+
+def elegir_pokemon_inicial():
+
+    print(f"{Fore.CYAN}Elige tu Pokémon inicial:{Style.RESET_ALL}\n")
+    
+    opciones = {
+        1: Pikachu(),
+        2: Bulbasaur(),
+        3: Charmander()
+    }
+    
+    print(f"  {Fore.YELLOW}1. ⚡ Pikachu (Tipo: Eléctrico){Style.RESET_ALL}")
+    print(f"     HP: 100 | Ataques: Impactrueno, Rayo, Ataque Rápido\n")
+    
+    print(f"  {Fore.GREEN}2. 🌿 Bulbasaur (Tipo: Planta){Style.RESET_ALL}")
+    print(f"     HP: 110 | Ataques: Látigo Cepa, Hoja Afilada, Placaje\n")
+    
+    print(f"  {Fore.RED}3. 🔥 Charmander (Tipo: Fuego){Style.RESET_ALL}")
+    print(f"     HP: 105 | Ataques: Ascuas, Lanzallamas, Arañazo\n")
+    
+    while True:
+        try:
+            eleccion = int(input(f"{Fore.YELLOW}Elige tu Pokémon (1-3): {Style.RESET_ALL}"))
+            
+            if eleccion in opciones:
+                pokemon_elegido = opciones[eleccion]
+                print(f"\n{Fore.GREEN}✓ ¡Has elegido a {pokemon_elegido.get_nombre()}!{Style.RESET_ALL}")
+                time.sleep(1)
+                return pokemon_elegido
+            else:
+                print(f"{Fore.RED}❌ Opción inválida. Elige 1, 2 o 3.{Style.RESET_ALL}")
+        except ValueError:
+            print(f"{Fore.RED}❌ Por favor ingresa un número.{Style.RESET_ALL}")
+
+
+def elegir_pokemon_rival(pokemon_jugador):
+
+    tipo_jugador = pokemon_jugador.get_tipo()
+    
+    if tipo_jugador == "electrico":
+        return Bulbasaur()  
+    elif tipo_jugador == "planta":
+        return Charmander()  
+    else:  
+        return Pikachu()  
+
+
+def preguntar_jugar_de_nuevo():
+
+    print(f"\n{Fore.CYAN}{'─'*50}{Style.RESET_ALL}")
+    respuesta = input(f"\n{Fore.YELLOW}¿Quieres jugar de nuevo? (s/n): {Style.RESET_ALL}").lower()
+    return respuesta in ['s', 'si', 'sí', 'y', 'yes']
+
+
+
+def main():
+    
+    while True:
+        mostrar_titulo()
+        
+        nombre_jugador = input(f"{Fore.CYAN}Ingresa tu nombre: {Style.RESET_ALL}").strip()
+        if not nombre_jugador:
+            nombre_jugador = "Ash"
+        
+        print(f"\n{Fore.GREEN}¡Bienvenido, {nombre_jugador}!{Style.RESET_ALL}\n")
+        time.sleep(1)
+        
+        pokemon_jugador = elegir_pokemon_inicial()
+        
+        pokemon_rival = elegir_pokemon_rival(pokemon_jugador)
+        
+        print(f"\n{Fore.RED}Tu rival ha elegido a {pokemon_rival.get_nombre()}!{Style.RESET_ALL}")
+        time.sleep(2)
+        
+        jugador = Entrenador(nombre_jugador, pokemon_jugador, es_ia=False)
+        rival = Entrenador("Entrenador Rival", pokemon_rival, es_ia=True)
+        
+        batalla = Batalla(jugador, rival)
+        batalla.iniciar()
+        
+        if not preguntar_jugar_de_nuevo():
+            limpiar_consola()
+            print(f"\n{Fore.YELLOW}{'='*50}")
+            print(f"{'¡Gracias por jugar! 👋'.center(50)}")
+            print(f"{'='*50}{Style.RESET_ALL}\n")
+            break
+
+
+if _name_ == "_main_":
+    main()
