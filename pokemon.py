@@ -1,89 +1,44 @@
+import flet as ft
 import random
 import time
-import os
+from typing import Optional
 
-try:
-    from colorama import init, Fore, Style
-    init(autoreset=True)  
-    COLORES_DISPONIBLES = True
-except ImportError:
-    print("Consejo: Instala 'colorama' para ver el juego con colores (pip install colorama)")
-    COLORES_DISPONIBLES = False
-    class Fore:
-        RED = GREEN = YELLOW = BLUE = CYAN = MAGENTA = WHITE = RESET = ""
-    class Style:
-        BRIGHT = RESET_ALL = ""
-
+# ===== CLASES DEL JUEGO (Backend) =====
 
 class Ataque:
-    
     def __init__(self, nombre, tipo, poder):
-        self.__nombre = nombre  
-        self.__tipo = tipo
-        self.__poder = poder
-    
-    def get_nombre(self):
-        return self.__nombre
-    
-    def get_tipo(self):
-        return self.__tipo
-    
-    def get_poder(self):
-        return self.__poder
-    
-    def __str__(self):
-        return f"{self.__nombre} (Tipo: {self.__tipo}, Poder: {self.__poder})"
+        self.nombre = nombre
+        self.tipo = tipo
+        self.poder = poder
 
 class Pokemon:
-
-    def __init__(self, nombre, tipo, hp_max):
-        self.__nombre = nombre
-        self.__tipo = tipo
-        self.__hp_max = hp_max
-        self.__hp_actual = hp_max  
-        self.__ataques = []  
-    
-    def get_nombre(self):
-        return self.__nombre
-    
-    def get_tipo(self):
-        return self.__tipo
-    
-    def get_hp_actual(self):
-        return self.__hp_actual
-    
-    def get_hp_max(self):
-        return self.__hp_max
-    
-    def get_ataques(self):
-        return self.__ataques
+    def __init__(self, nombre, tipo, hp_max, sprite_url=""):
+        self.nombre = nombre
+        self.tipo = tipo
+        self.hp_max = hp_max
+        self.hp_actual = hp_max
+        self.ataques = []
+        self.sprite_url = sprite_url
     
     def agregar_ataque(self, ataque):
-        self.__ataques.append(ataque)
+        self.ataques.append(ataque)
     
     def esta_debilitado(self):
-        return self.__hp_actual <= 0
+        return self.hp_actual <= 0
     
     def recibir_dano(self, cantidad):
-        self.__hp_actual -= cantidad
-        if self.__hp_actual < 0:
-            self.__hp_actual = 0  
+        self.hp_actual -= cantidad
+        if self.hp_actual < 0:
+            self.hp_actual = 0
     
     def atacar(self, ataque, objetivo):
-        dano_base = ataque.get_poder()
-
-        multiplicador = self.__calcular_efectividad(ataque.get_tipo(), objetivo.get_tipo())
-
+        dano_base = ataque.poder
+        multiplicador = self._calcular_efectividad(ataque.tipo, objetivo.tipo)
         dano_total = int(dano_base * multiplicador)
-        
         objetivo.recibir_dano(dano_total)
-
-        self.__mostrar_mensaje_ataque(ataque, objetivo, dano_total, multiplicador)
-        
-        return dano_total
+        return dano_total, multiplicador
     
-    def __calcular_efectividad(self, tipo_ataque, tipo_defensor):
-
+    def _calcular_efectividad(self, tipo_ataque, tipo_defensor):
         ventajas = {
             "fuego": "planta",
             "planta": "electrico",
@@ -92,303 +47,516 @@ class Pokemon:
         
         if tipo_ataque in ventajas and ventajas[tipo_ataque] == tipo_defensor:
             return 1.5
-        
         if tipo_defensor in ventajas and ventajas[tipo_defensor] == tipo_ataque:
             return 0.75
         return 1.0
-    
-    def __mostrar_mensaje_ataque(self, ataque, objetivo, dano, multiplicador):
-        color = self.__get_color_tipo()
-        
-        print(f"\n{color}💥 ¡{self.__nombre} usa {ataque.get_nombre()}!{Style.RESET_ALL}")
-        time.sleep(0.5)
-        
-        if multiplicador > 1.0:
-            print(f"{Fore.GREEN}⚡ ¡Es súper efectivo!{Style.RESET_ALL}")
-        elif multiplicador < 1.0:
-            print(f"{Fore.RED}🛡️ No es muy efectivo...{Style.RESET_ALL}")
-        
-        print(f"💔 Hace {dano} puntos de daño a {objetivo.get_nombre()}")
-        time.sleep(0.8)
-    
-    def __get_color_tipo(self):
-        if not COLORES_DISPONIBLES:
-            return ""
-        
-        colores = {
-            "fuego": Fore.RED,
-            "planta": Fore.GREEN,
-            "electrico": Fore.YELLOW,
-            "normal": Fore.WHITE
-        }
-        return colores.get(self.__tipo, Fore.WHITE)
-    
-    def mostrar_estado(self):
-        color = self.__get_color_tipo()
-        barra_vida = self.__generar_barra_vida()
-        print(f"{color}{self.__nombre}{Style.RESET_ALL} {barra_vida} {self.__hp_actual}/{self.__hp_max} HP")
-    
-    def __generar_barra_vida(self):
-        porcentaje = self.__hp_actual / self.__hp_max
-        total_bloques = 20
-        bloques_llenos = int(porcentaje * total_bloques)
-        
-        if porcentaje > 0.5:
-            color_barra = Fore.GREEN
-        elif porcentaje > 0.25:
-            color_barra = Fore.YELLOW
-        else:
-            color_barra = Fore.RED
-        
-        barra = "█" * bloques_llenos + "░" * (total_bloques - bloques_llenos)
-        return f"{color_barra}[{barra}]{Style.RESET_ALL}"
 
 class Pikachu(Pokemon):
-  
     def __init__(self):
-        super().__init__("Pikachu", "electrico", 100)       
+        super().__init__("Pikachu", "electrico", 100, "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png")
         self.agregar_ataque(Ataque("Impactrueno", "electrico", 40))
         self.agregar_ataque(Ataque("Rayo", "electrico", 55))
         self.agregar_ataque(Ataque("Ataque Rápido", "normal", 30))
 
-
 class Bulbasaur(Pokemon):
-    
     def __init__(self):
-        super().__init__("Bulbasaur", "planta", 110)      
+        super().__init__("Bulbasaur", "planta", 110, "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png")
         self.agregar_ataque(Ataque("Látigo Cepa", "planta", 45))
         self.agregar_ataque(Ataque("Hoja Afilada", "planta", 50))
         self.agregar_ataque(Ataque("Placaje", "normal", 30))
 
-
 class Charmander(Pokemon):
-    
     def __init__(self):
-        super().__init__("Charmander", "fuego", 105)       
+        super().__init__("Charmander", "fuego", 105, "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png")
         self.agregar_ataque(Ataque("Ascuas", "fuego", 40))
         self.agregar_ataque(Ataque("Lanzallamas", "fuego", 55))
         self.agregar_ataque(Ataque("Arañazo", "normal", 30))
 
+# ===== INTERFAZ GRÁFICA =====
 
-class Entrenador:
- 
-    def __init__(self, nombre, pokemon, es_ia=False):
-        self.__nombre = nombre
-        self.__pokemon = pokemon
-        self.__es_ia = es_ia
-    
-    def get_nombre(self):
-        return self.__nombre
-    
-    def get_pokemon(self):
-        return self.__pokemon
-    
-    def es_inteligencia_artificial(self):
-        return self.__es_ia
-    
-    def elegir_ataque(self):
-        ataques_disponibles = self.__pokemon.get_ataques()
+class PokemonBatallaApp:
+    def __init__(self, page: ft.Page):
+        self.page = page
+        self.page.title = "Batalla Pokémon"
+        self.page.window_width = 800
+        self.page.window_height = 600
+        self.page.padding = 0
         
-        if self.__es_ia:
-            return random.choice(ataques_disponibles)
-        else:
-            return self.__mostrar_menu_ataques(ataques_disponibles)
+        self.jugador_pokemon: Optional[Pokemon] = None
+        self.rival_pokemon: Optional[Pokemon] = None
+        self.turno_jugador = True
+        self.mensaje_batalla = ""
+        
+        self.mostrar_menu_principal()
     
-    def __mostrar_menu_ataques(self, ataques):
-        while True:
-            print(f"\n{Fore.CYAN}╔══════════════════════════════════════╗")
-            print(f"║  ⚔️  ELIGE TU ATAQUE  ⚔️              ║")
-            print(f"╚══════════════════════════════════════╝{Style.RESET_ALL}")
+    def get_color_tipo(self, tipo):
+        colores = {
+            "fuego": ft.Colors.RED_400,
+            "planta": ft.Colors.GREEN_400,
+            "electrico": ft.Colors.YELLOW_700,
+            "normal": ft.Colors.GREY_400
+        }
+        return colores.get(tipo, ft.Colors.BLUE_400)
+    
+    def mostrar_menu_principal(self):
+        self.page.clean()
+        
+        titulo = ft.Container(
+            content=ft.Column([
+                ft.Text("⚡ BATALLA POKÉMON ⚡", 
+                       size=40, 
+                       weight=ft.FontWeight.BOLD,
+                       color=ft.Colors.YELLOW_400),
+                ft.Text("Edición Flet - POO", 
+                       size=20, 
+                       color=ft.Colors.WHITE70),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            alignment=ft.alignment.center,
+            padding=40
+        )
+        
+        nombre_input = ft.TextField(
+            label="Tu nombre",
+            hint_text="Ash",
+            width=300,
+            text_align=ft.TextAlign.CENTER,
+        )
+        
+        def iniciar_juego(e):
+            nombre = nombre_input.value.strip() or "Ash"
+            self.nombre_jugador = nombre
+            self.mostrar_seleccion_pokemon()
+        
+        boton_iniciar = ft.ElevatedButton(
+            "COMENZAR AVENTURA",
+            on_click=iniciar_juego,
+            width=300,
+            height=50,
+            style=ft.ButtonStyle(
+                color=ft.Colors.WHITE,
+                bgcolor=ft.Colors.GREEN_600,
+            )
+        )
+        
+        self.page.add(
+            ft.Container(
+                content=ft.Column([
+                    titulo,
+                    nombre_input,
+                    ft.Container(height=20),
+                    boton_iniciar,
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                gradient=ft.LinearGradient(
+                    begin=ft.alignment.top_center,
+                    end=ft.alignment.bottom_center,
+                    colors=[ft.Colors.BLUE_900, ft.Colors.BLUE_700]
+                ),
+                expand=True,
+                alignment=ft.alignment.center
+            )
+        )
+    
+    def mostrar_seleccion_pokemon(self):
+        self.page.clean()
+        
+        def crear_carta_pokemon(pokemon_class, numero):
+            pokemon = pokemon_class()
             
-            for i, ataque in enumerate(ataques, 1):
-                print(f"  {i}. {ataque}")
+            def seleccionar(e):
+                self.jugador_pokemon = pokemon_class()
+                self.elegir_rival()
+                self.iniciar_batalla()
             
-            try:
-                eleccion = int(input(f"\n{Fore.YELLOW}Elige un ataque (1-{len(ataques)}): {Style.RESET_ALL}"))
-                
-                if 1 <= eleccion <= len(ataques):
-                    return ataques[eleccion - 1]
-                else:
-                    print(f"{Fore.RED}❌ Opción inválida. Intenta de nuevo.{Style.RESET_ALL}")
-            except ValueError:
-                print(f"{Fore.RED}❌ Por favor ingresa un número.{Style.RESET_ALL}")
-
-
-class Batalla:
-
-    def _init_(self, jugador, rival):
-        self.__jugador = jugador
-        self.__rival = rival
-        self.__turno = 1
-    
-    def iniciar(self):
-        self.__mostrar_introduccion()
+            return ft.Container(
+                content=ft.Column([
+                    ft.Image(src=pokemon.sprite_url, width=100, height=100),
+                    ft.Text(pokemon.nombre, size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
+                    ft.Text(f"Tipo: {pokemon.tipo.upper()}", size=14, color=ft.Colors.BLACK),
+                    ft.Text(f"HP: {pokemon.hp_max}", size=14, color=ft.Colors.BLACK),
+                    ft.ElevatedButton(
+                        "ELEGIR",
+                        on_click=seleccionar,
+                        bgcolor=self.get_color_tipo(pokemon.tipo),
+                        color=ft.Colors.WHITE
+                    )
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10),
+                bgcolor=ft.Colors.WHITE,
+                border_radius=15,
+                padding=20,
+                width=200,
+                border=ft.border.all(3, self.get_color_tipo(pokemon.tipo))
+            )
         
-        while not self.__hay_ganador():
-            self.__ejecutar_turno()
-            self.__turno += 1
-        
-        self.__mostrar_resultado()
+        self.page.add(
+            ft.Container(
+                content=ft.Column([
+                    ft.Text("Elige tu Pokémon inicial", 
+                           size=30, 
+                           weight=ft.FontWeight.BOLD,
+                           color=ft.Colors.WHITE),
+                    ft.Container(height=30),
+                    ft.Row([
+                        crear_carta_pokemon(Pikachu, 1),
+                        crear_carta_pokemon(Bulbasaur, 2),
+                        crear_carta_pokemon(Charmander, 3),
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                gradient=ft.LinearGradient(
+                    begin=ft.alignment.top_center,
+                    end=ft.alignment.bottom_center,
+                    colors=[ft.Colors.PURPLE_900, ft.Colors.PURPLE_700]
+                ),
+                expand=True,
+                alignment=ft.alignment.center,
+                padding=40
+            )
+        )
     
-    def __mostrar_introduccion(self):
-        limpiar_consola()
-        print(f"{Fore.MAGENTA}{'='*50}")
-        print(f"{'🎮 ¡COMIENZA LA BATALLA POKÉMON! 🎮'.center(50)}")
-        print(f"{'='*50}{Style.RESET_ALL}\n")
-        
-        print(f"{Fore.CYAN}⚔️  {self._jugador.get_nombre()} envía a {self._jugador.get_pokemon().get_nombre()}!")
-        print(f"⚔️  {self._rival.get_nombre()} envía a {self._rival.get_pokemon().get_nombre()}!{Style.RESET_ALL}\n")
-        
-        input(f"{Fore.YELLOW}Presiona ENTER para comenzar...{Style.RESET_ALL}")
-    
-    def __ejecutar_turno(self):
-        limpiar_consola()
-        print(f"{Fore.MAGENTA}═══════════════ TURNO {self.__turno} ═══════════════{Style.RESET_ALL}\n")
-        print(f"{Fore.CYAN}TU POKÉMON:{Style.RESET_ALL}")
-        self.__jugador.get_pokemon().mostrar_estado()
-        print(f"\n{Fore.RED}POKÉMON RIVAL:{Style.RESET_ALL}")
-        self.__rival.get_pokemon().mostrar_estado()
-        print()
-        
-        ataque_jugador = self.__jugador.elegir_ataque()
-        self._jugador.get_pokemon().atacar(ataque_jugador, self._rival.get_pokemon())
-        
-        if self.__rival.get_pokemon().esta_debilitado():
-            return
-        
-        input(f"\n{Fore.YELLOW}Presiona ENTER para continuar...{Style.RESET_ALL}")
-        print(f"\n{Fore.RED}--- Turno del rival ---{Style.RESET_ALL}")
-        time.sleep(1)
-        
-        ataque_rival = self.__rival.elegir_ataque()
-        self._rival.get_pokemon().atacar(ataque_rival, self._jugador.get_pokemon())
-        
-        input(f"\n{Fore.YELLOW}Presiona ENTER para el siguiente turno...{Style.RESET_ALL}")
-    
-    def __hay_ganador(self):
-        return (self.__jugador.get_pokemon().esta_debilitado() or 
-                self.__rival.get_pokemon().esta_debilitado())
-    
-    def __mostrar_resultado(self):
-        limpiar_consola()
-        
-        if self.__jugador.get_pokemon().esta_debilitado():
-            print(f"{Fore.RED}{'='*50}")
-            print(f"{'💔 HAS PERDIDO LA BATALLA 💔'.center(50)}")
-            print(f"{'='*50}{Style.RESET_ALL}\n")
-            print(f"{self.__jugador.get_pokemon().get_nombre()} se ha debilitado...")
-            print(f"¡{self.__rival.get_nombre()} es el ganador!")
-        else:
-            print(f"{Fore.GREEN}{'='*50}")
-            print(f"{'🏆 ¡HAS GANADO LA BATALLA! 🏆'.center(50)}")
-            print(f"{'='*50}{Style.RESET_ALL}\n")
-            print(f"{self.__rival.get_pokemon().get_nombre()} se ha debilitado...")
-            print(f"¡{self.__jugador.get_nombre()}, eres el ganador!")
-
-
-
-def limpiar_consola():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-
-def mostrar_titulo():
-    limpiar_consola()
-    print(f"{Fore.YELLOW}{Style.BRIGHT}")
-    print("  ╔═══════════════════════════════════════════════╗")
-    print("  ║                                               ║")
-    print("  ║        ⚡ BATALLA POKÉMON ⚡                  ║")
-    print("  ║        Edición Consola - POO                  ║")
-    print("  ║                                               ║")
-    print("  ╚═══════════════════════════════════════════════╝")
-    print(f"{Style.RESET_ALL}\n")
-
-
-def elegir_pokemon_inicial():
-
-    print(f"{Fore.CYAN}Elige tu Pokémon inicial:{Style.RESET_ALL}\n")
-    
-    opciones = {
-        1: Pikachu(),
-        2: Bulbasaur(),
-        3: Charmander()
-    }
-    
-    print(f"  {Fore.YELLOW}1. ⚡ Pikachu (Tipo: Eléctrico){Style.RESET_ALL}")
-    print(f"     HP: 100 | Ataques: Impactrueno, Rayo, Ataque Rápido\n")
-    
-    print(f"  {Fore.GREEN}2. 🌿 Bulbasaur (Tipo: Planta){Style.RESET_ALL}")
-    print(f"     HP: 110 | Ataques: Látigo Cepa, Hoja Afilada, Placaje\n")
-    
-    print(f"  {Fore.RED}3. 🔥 Charmander (Tipo: Fuego){Style.RESET_ALL}")
-    print(f"     HP: 105 | Ataques: Ascuas, Lanzallamas, Arañazo\n")
-    
-    while True:
+    def elegir_rival(self):
+        # Elegir rival aleatoriamente (no basado en la elección del jugador)
+        opciones = [Pikachu, Bulbasaur, Charmander]
+        # Opcional: evitar elegir exactamente la misma especie que el jugador
         try:
-            eleccion = int(input(f"{Fore.YELLOW}Elige tu Pokémon (1-3): {Style.RESET_ALL}"))
+            jugador_clase = type(self.jugador_pokemon)
+            candidatos = [c for c in opciones if c is not jugador_clase]
+            if not candidatos:
+                candidatos = opciones
+        except Exception:
+            candidates = opciones
+            candidatos = opciones
+        self.rival_pokemon = random.choice(candidatos)()
+    
+    def crear_barra_hp(self, pokemon):
+        porcentaje = pokemon.hp_actual / pokemon.hp_max
+        
+        if porcentaje > 0.5:
+            color = ft.Colors.GREEN
+        elif porcentaje > 0.25:
+            color = ft.Colors.YELLOW
+        else:
+            color = ft.Colors.RED
+        
+        # Barra externa (fondo) y barra interna (indicador)
+        barra_interna = ft.Container(
+            bgcolor=color,
+            width=200 * porcentaje,
+            height=20,
+            border_radius=5,
+        )
+
+        barra_externa = ft.Container(
+            content=ft.Row([barra_interna]),
+            width=200,
+            height=20,
+            bgcolor=ft.Colors.GREY_800,
+            border_radius=5,
+        )
+
+        # Guardamos la referencia a la barra interna para actualizarla después
+        barra_externa.barra_interna = barra_interna
+        return barra_externa
+    
+    def iniciar_batalla(self):
+        self.page.clean()
+        
+        # Información del Pokémon rival (arriba)
+        self.rival_nombre_text = ft.Text(
+            f"{self.rival_pokemon.nombre}",
+            size=20,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.WHITE
+        )
+        self.rival_hp_text = ft.Text(
+            f"Lv. 42",
+            size=16,
+            color=ft.Colors.WHITE70
+        )
+        self.rival_hp_bar = self.crear_barra_hp(self.rival_pokemon)
+        self.rival_hp_numero = ft.Text(
+            f"{self.rival_pokemon.hp_actual}/{self.rival_pokemon.hp_max}",
+            size=14,
+            color=ft.Colors.WHITE
+        )
+        
+        rival_info = ft.Container(
+            content=ft.Column([
+                ft.Row([self.rival_nombre_text, self.rival_hp_text], spacing=10),
+                ft.Row([
+                    ft.Text("HP", size=14, color=ft.Colors.WHITE),
+                    self.rival_hp_bar,
+                ], spacing=5),
+                self.rival_hp_numero,
+            ], spacing=5),
+            bgcolor=ft.Colors.with_opacity(0.8, ft.Colors.BLACK),
+            padding=15,
+            border_radius=10,
+            width=300,
+        )
+        
+        # Sprite rival
+        rival_sprite = ft.Image(
+            src=self.rival_pokemon.sprite_url,
+            width=150,
+            height=150,
+        )
+        
+        # Información del Pokémon jugador (abajo)
+        self.jugador_nombre_text = ft.Text(
+            f"{self.jugador_pokemon.nombre}",
+            size=20,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.WHITE
+        )
+        self.jugador_hp_text = ft.Text(
+            f"Lv. 42",
+            size=16,
+            color=ft.Colors.WHITE70
+        )
+        self.jugador_hp_bar = self.crear_barra_hp(self.jugador_pokemon)
+        self.jugador_hp_numero = ft.Text(
+            f"{self.jugador_pokemon.hp_actual}/{self.jugador_pokemon.hp_max}",
+            size=14,
+            color=ft.Colors.WHITE
+        )
+        
+        jugador_info = ft.Container(
+            content=ft.Column([
+                ft.Row([self.jugador_nombre_text, self.jugador_hp_text], spacing=10),
+                ft.Row([
+                    ft.Text("HP", size=14, color=ft.Colors.WHITE),
+                    self.jugador_hp_bar,
+                ], spacing=5),
+                self.jugador_hp_numero,
+            ], spacing=5),
+            bgcolor=ft.Colors.with_opacity(0.8, ft.Colors.BLACK),
+            padding=15,
+            border_radius=10,
+            width=300,
+        )
+        
+        # Sprite jugador
+        jugador_sprite = ft.Image(
+            src=self.jugador_pokemon.sprite_url,
+            width=150,
+            height=150,
+        )
+        
+        # Mensaje de batalla
+        self.mensaje_text = ft.Text(
+            f"¿Qué hará {self.jugador_pokemon.nombre}?",
+            size=20,
+            color=ft.Colors.WHITE,
+            weight=ft.FontWeight.BOLD,
+        )
+        
+        mensaje_box = ft.Container(
+            content=self.mensaje_text,
+            bgcolor=ft.Colors.with_opacity(0.95, ft.Colors.BLACK),
+            # Asegurar texto legible
+            padding=22,
+            border_radius=10,
+            width=420,
+            height=100,
+        )
+        
+        # Botones de ataque
+        botones_ataque = []
+        for ataque in self.jugador_pokemon.ataques:
+            btn = ft.ElevatedButton(
+                f"{ataque.nombre}\n({ataque.tipo} - {ataque.poder})",
+                on_click=lambda e, a=ataque: self.ejecutar_ataque(a),
+                width=180,
+                height=80,
+                bgcolor=self.get_color_tipo(ataque.tipo),
+                color=ft.Colors.WHITE,
+            )
+            botones_ataque.append(btn)
+        # Guardar referencia a los botones para habilitar/deshabilitar sin cambiar layout
+        self.botones_ataque = botones_ataque
+        
+        # Mantener siempre el mismo contenedor; solo deshabilitaremos botones durante animaciones
+        self.botones_container = ft.Container(
+            content=ft.Column([
+                ft.Row([botones_ataque[0], botones_ataque[1]], spacing=10),
+                ft.Row([botones_ataque[2]], spacing=10) if len(botones_ataque) > 2 else ft.Container(),
+            ], spacing=10),
+            visible=True
+        )
+        
+        # Layout principal
+        campo_batalla = ft.Stack([
+            # Fondo
+            ft.Container(
+                gradient=ft.LinearGradient(
+                    begin=ft.alignment.top_center,
+                    end=ft.alignment.bottom_center,
+                    colors=[ft.Colors.CYAN_300, ft.Colors.GREEN_300]
+                ),
+                expand=True,
+            ),
             
-            if eleccion in opciones:
-                pokemon_elegido = opciones[eleccion]
-                print(f"\n{Fore.GREEN}✓ ¡Has elegido a {pokemon_elegido.get_nombre()}!{Style.RESET_ALL}")
-                time.sleep(1)
-                return pokemon_elegido
-            else:
-                print(f"{Fore.RED}❌ Opción inválida. Elige 1, 2 o 3.{Style.RESET_ALL}")
-        except ValueError:
-            print(f"{Fore.RED}❌ Por favor ingresa un número.{Style.RESET_ALL}")
-
-
-def elegir_pokemon_rival(pokemon_jugador):
-
-    tipo_jugador = pokemon_jugador.get_tipo()
+            # Rival (arriba derecha)
+            ft.Container(
+                content=rival_sprite,
+                top=40,
+                right=80,
+            ),
+            ft.Container(
+                content=rival_info,
+                top=30,
+                right=200,
+            ),
+            
+            # Jugador (abajo izquierda)
+            ft.Container(
+                content=jugador_sprite,
+                bottom=140,
+                left=80,
+            ),
+            ft.Container(
+                content=jugador_info,
+                bottom=120,
+                left=200,
+            ),
+        ])
+        
+        menu_batalla = ft.Container(
+            content=ft.Column([
+                mensaje_box,
+                ft.Container(height=10),
+                self.botones_container,
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            bgcolor=ft.Colors.with_opacity(0.9, ft.Colors.BLACK),
+            padding=20,
+            border_radius=ft.border_radius.only(top_left=15, top_right=15),
+        )
+        
+        self.page.add(
+            ft.Column([
+                ft.Container(content=campo_batalla, expand=True),
+                menu_batalla,
+            ], spacing=0, expand=True)
+        )
     
-    if tipo_jugador == "electrico":
-        return Bulbasaur()  
-    elif tipo_jugador == "planta":
-        return Charmander()  
-    else:  
-        return Pikachu()  
-
-
-def preguntar_jugar_de_nuevo():
-
-    print(f"\n{Fore.CYAN}{'─'*50}{Style.RESET_ALL}")
-    respuesta = input(f"\n{Fore.YELLOW}¿Quieres jugar de nuevo? (s/n): {Style.RESET_ALL}").lower()
-    return respuesta in ['s', 'si', 'sí', 'y', 'yes']
-
-
-
-def main():
-    
-    while True:
-        mostrar_titulo()
+    def ejecutar_ataque(self, ataque):
+        # Deshabilitar botones (sin cambiar el layout)
+        for b in getattr(self, 'botones_ataque', []):
+            b.disabled = True
+        self.page.update()
         
-        nombre_jugador = input(f"{Fore.CYAN}Ingresa tu nombre: {Style.RESET_ALL}").strip()
-        if not nombre_jugador:
-            nombre_jugador = "Ash"
+        # Ataque del jugador
+        dano, efectividad = self.jugador_pokemon.atacar(ataque, self.rival_pokemon)
         
-        print(f"\n{Fore.GREEN}¡Bienvenido, {nombre_jugador}!{Style.RESET_ALL}\n")
-        time.sleep(1)
+        mensaje = f"¡{self.jugador_pokemon.nombre} usa {ataque.nombre}!"
+        if efectividad > 1.0:
+            mensaje += " ¡Es súper efectivo!"
+        elif efectividad < 1.0:
+            mensaje += " No es muy efectivo..."
         
-        pokemon_jugador = elegir_pokemon_inicial()
+        self.mensaje_text.value = mensaje
+        self.actualizar_barras_hp()
+        self.page.update()
         
-        pokemon_rival = elegir_pokemon_rival(pokemon_jugador)
-        
-        print(f"\n{Fore.RED}Tu rival ha elegido a {pokemon_rival.get_nombre()}!{Style.RESET_ALL}")
         time.sleep(2)
         
-        jugador = Entrenador(nombre_jugador, pokemon_jugador, es_ia=False)
-        rival = Entrenador("Entrenador Rival", pokemon_rival, es_ia=True)
+        # Verificar si el rival fue derrotado
+        if self.rival_pokemon.esta_debilitado():
+            self.fin_batalla(True)
+            return
         
-        batalla = Batalla(jugador, rival)
-        batalla.iniciar()
+        # Ataque del rival
+        ataque_rival = random.choice(self.rival_pokemon.ataques)
+        dano_rival, efectividad_rival = self.rival_pokemon.atacar(ataque_rival, self.jugador_pokemon)
         
-        if not preguntar_jugar_de_nuevo():
-            limpiar_consola()
-            print(f"\n{Fore.YELLOW}{'='*50}")
-            print(f"{'¡Gracias por jugar! 👋'.center(50)}")
-            print(f"{'='*50}{Style.RESET_ALL}\n")
-            break
+        mensaje_rival = f"¡{self.rival_pokemon.nombre} usa {ataque_rival.nombre}!"
+        if efectividad_rival > 1.0:
+            mensaje_rival += " ¡Es súper efectivo!"
+        elif efectividad_rival < 1.0:
+            mensaje_rival += " No es muy efectivo..."
+        
+        self.mensaje_text.value = mensaje_rival
+        self.actualizar_barras_hp()
+        self.page.update()
+        
+        time.sleep(2)
+        
+        # Verificar si el jugador fue derrotado
+        if self.jugador_pokemon.esta_debilitado():
+            self.fin_batalla(False)
+            return
+        
+        # Restaurar menú y habilitar botones
+        self.mensaje_text.value = f"¿Qué hará {self.jugador_pokemon.nombre}?"
+        for b in getattr(self, 'botones_ataque', []):
+            b.disabled = False
+        self.page.update()
+    
+    def actualizar_barras_hp(self):
+        # Actualizar barra del jugador
+        try:
+            porcentaje_j = self.jugador_pokemon.hp_actual / self.jugador_pokemon.hp_max
+        except Exception:
+            porcentaje_j = 0
+        if hasattr(self.jugador_hp_bar, 'barra_interna'):
+            self.jugador_hp_bar.barra_interna.width = 200 * porcentaje_j
+        else:
+            # fallback: reemplazar
+            self.jugador_hp_bar = self.crear_barra_hp(self.jugador_pokemon)
+        self.jugador_hp_numero.value = f"{self.jugador_pokemon.hp_actual}/{self.jugador_pokemon.hp_max}"
 
+        # Actualizar barra del rival
+        try:
+            porcentaje_r = self.rival_pokemon.hp_actual / self.rival_pokemon.hp_max
+        except Exception:
+            porcentaje_r = 0
+        if hasattr(self.rival_hp_bar, 'barra_interna'):
+            self.rival_hp_bar.barra_interna.width = 200 * porcentaje_r
+        else:
+            self.rival_hp_bar = self.crear_barra_hp(self.rival_pokemon)
+        self.rival_hp_numero.value = f"{self.rival_pokemon.hp_actual}/{self.rival_pokemon.hp_max}"
+    
+    def fin_batalla(self, victoria):
+        self.page.clean()
+        
+        if victoria:
+            titulo = "🏆 ¡VICTORIA! 🏆"
+            mensaje = f"¡Has derrotado a {self.rival_pokemon.nombre}!"
+            color_fondo = ft.Colors.GREEN_700
+        else:
+            titulo = "💔 DERROTA 💔"
+            mensaje = f"{self.jugador_pokemon.nombre} fue derrotado..."
+            color_fondo = ft.Colors.RED_700
+        
+        def jugar_de_nuevo(e):
+            self.mostrar_menu_principal()
+        
+        self.page.add(
+            ft.Container(
+                content=ft.Column([
+                    ft.Text(titulo, size=50, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                    ft.Container(height=20),
+                    ft.Text(mensaje, size=25, color=ft.Colors.WHITE70),
+                    ft.Container(height=40),
+                    ft.ElevatedButton(
+                        "JUGAR DE NUEVO",
+                        on_click=jugar_de_nuevo,
+                        width=250,
+                        height=50,
+                        bgcolor=ft.Colors.BLUE_600,
+                        color=ft.Colors.WHITE
+                    ),
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                gradient=ft.LinearGradient(
+                    begin=ft.alignment.top_center,
+                    end=ft.alignment.bottom_center,
+                    colors=[color_fondo, ft.Colors.BLACK]
+                ),
+                expand=True,
+                alignment=ft.alignment.center
+            )
+        )
 
-if __name__ == "_main_":
-    main()
+def main(page: ft.Page):
+    PokemonBatallaApp(page)
+
+ft.app(target=main)
