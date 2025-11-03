@@ -51,26 +51,53 @@ class Pokemon:
             return 0.75
         return 1.0
 
-class Pikachu(Pokemon):
-    def __init__(self):
-        super().__init__("Pikachu", "electrico", 100, "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png")
-        self.agregar_ataque(Ataque("Impactrueno", "electrico", 40))
-        self.agregar_ataque(Ataque("Rayo", "electrico", 55))
-        self.agregar_ataque(Ataque("Ataque Rápido", "normal", 30))
+# Datos de Pokémon disponibles
+POKEMON_DATA = {
+    "Pikachu": {
+        "tipo": "electrico",
+        "hp": 100,
+        "sprite_url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
+        "ataques": [
+            ("Impactrueno", "electrico", 40),
+            ("Rayo", "electrico", 55),
+            ("Ataque Rápido", "normal", 30)
+        ]
+    },
+    "Bulbasaur": {
+        "tipo": "planta",
+        "hp": 110,
+        "sprite_url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png",
+        "ataques": [
+            ("Látigo Cepa", "planta", 45),
+            ("Hoja Afilada", "planta", 50),
+            ("Placaje", "normal", 30)
+        ]
+    },
+    "Charmander": {
+        "tipo": "fuego",
+        "hp": 105,
+        "sprite_url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png",
+        "ataques": [
+            ("Ascuas", "fuego", 40),
+            ("Lanzallamas", "fuego", 55),
+            ("Arañazo", "normal", 30)
+        ]
+    }
+}
 
-class Bulbasaur(Pokemon):
-    def __init__(self):
-        super().__init__("Bulbasaur", "planta", 110, "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png")
-        self.agregar_ataque(Ataque("Látigo Cepa", "planta", 45))
-        self.agregar_ataque(Ataque("Hoja Afilada", "planta", 50))
-        self.agregar_ataque(Ataque("Placaje", "normal", 30))
-
-class Charmander(Pokemon):
-    def __init__(self):
-        super().__init__("Charmander", "fuego", 105, "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png")
-        self.agregar_ataque(Ataque("Ascuas", "fuego", 40))
-        self.agregar_ataque(Ataque("Lanzallamas", "fuego", 55))
-        self.agregar_ataque(Ataque("Arañazo", "normal", 30))
+def crear_pokemon(nombre):
+    """Crea una instancia de Pokémon a partir de los datos predefinidos."""
+    if nombre not in POKEMON_DATA:
+        raise ValueError(f"Pokémon desconocido: {nombre}")
+    
+    data = POKEMON_DATA[nombre]
+    pokemon = Pokemon(nombre, data["tipo"], data["hp"], data["sprite_url"])
+    
+    # Agregar ataques
+    for nombre_ataque, tipo, poder in data["ataques"]:
+        pokemon.agregar_ataque(Ataque(nombre_ataque, tipo, poder))
+    
+    return pokemon
 
 # ===== INTERFAZ GRÁFICA =====
 
@@ -159,11 +186,11 @@ class PokemonBatallaApp:
     def mostrar_seleccion_pokemon(self):
         self.page.clean()
         
-        def crear_carta_pokemon(pokemon_class, numero):
-            pokemon = pokemon_class()
+        def crear_carta_pokemon(nombre_pokemon, numero):
+            pokemon = crear_pokemon(nombre_pokemon)
             
             def seleccionar(e):
-                self.jugador_pokemon = pokemon_class()
+                self.jugador_pokemon = crear_pokemon(nombre_pokemon)
                 self.elegir_rival()
                 self.iniciar_batalla()
             
@@ -196,9 +223,9 @@ class PokemonBatallaApp:
                            color=ft.Colors.WHITE),
                     ft.Container(height=30),
                     ft.Row([
-                        crear_carta_pokemon(Pikachu, 1),
-                        crear_carta_pokemon(Bulbasaur, 2),
-                        crear_carta_pokemon(Charmander, 3),
+                        crear_carta_pokemon("Pikachu", 1),
+                        crear_carta_pokemon("Bulbasaur", 2),
+                        crear_carta_pokemon("Charmander", 3),
                     ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
                 gradient=ft.LinearGradient(
@@ -214,17 +241,17 @@ class PokemonBatallaApp:
     
     def elegir_rival(self):
         # Elegir rival aleatoriamente (no basado en la elección del jugador)
-        opciones = [Pikachu, Bulbasaur, Charmander]
+        opciones = list(POKEMON_DATA.keys())
         # Opcional: evitar elegir exactamente la misma especie que el jugador
         try:
-            jugador_clase = type(self.jugador_pokemon)
-            candidatos = [c for c in opciones if c is not jugador_clase]
+            nombre_jugador = self.jugador_pokemon.nombre
+            candidatos = [n for n in opciones if n != nombre_jugador]
             if not candidatos:
                 candidatos = opciones
         except Exception:
-            candidates = opciones
             candidatos = opciones
-        self.rival_pokemon = random.choice(candidatos)()
+        
+        self.rival_pokemon = crear_pokemon(random.choice(candidatos))
     
     def crear_barra_hp(self, pokemon):
         porcentaje = pokemon.hp_actual / pokemon.hp_max
